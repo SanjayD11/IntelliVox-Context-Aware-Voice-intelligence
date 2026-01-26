@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
+import { User, Session, AuthError, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
@@ -21,10 +21,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: AuthChangeEvent, session) => {
+        console.log('Auth event:', event, 'Session:', session ? 'present' : 'null');
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Handle password recovery event - redirect to update password page
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('PASSWORD_RECOVERY event detected, redirecting to /update-password');
+          // Use setTimeout to ensure state is updated before navigation
+          setTimeout(() => {
+            window.location.href = '/update-password';
+          }, 100);
+        }
+
+        // Handle successful sign in from email confirmation
+        if (event === 'SIGNED_IN' && session) {
+          // Check if we're on a callback page or root with hash
+          const path = window.location.pathname;
+          const hash = window.location.hash;
+
+          // If on root or auth/callback and hash contains tokens, redirect to chat
+          if ((path === '/' || path === '/auth/callback') && hash.includes('access_token')) {
+            console.log('SIGNED_IN from email link, redirecting to /chat');
+            setTimeout(() => {
+              window.location.href = '/chat';
+            }, 100);
+          }
+        }
       }
     );
 
@@ -52,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Check if email confirmation is required
-    const needsConfirmation = !data.session && data.user?.identities?.length === 0 
+    const needsConfirmation = !data.session && data.user?.identities?.length === 0
       ? false // User already exists
       : !data.session; // Needs email confirmation
 
