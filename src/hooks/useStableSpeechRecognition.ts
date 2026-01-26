@@ -175,10 +175,26 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       }
 
       // Reconstruct full transcript for display
-      // We combine our stable final ref with the current interim
       const currentTranscript = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
       setTranscript(currentTranscript);
       onInterimRef.current?.(currentTranscript);
+
+      // NUCLEAR OPTION FOR MOBILE:
+      // If we got a final result, force a restart by stopping immediately.
+      // This wipes the browser's internal legacy buffer which causes the "hellohello" bug.
+      if (finalTranscript) {
+        console.log('[SpeechRecognition] Final result received, force-resetting to prevent Android echo');
+        // We do NOT append here. We rely on the fact that we processed it above.
+        // But we MUST check if we processed it. 
+        // Actually, the previous logic (lines 161-171) added it to finalTranscriptRef.
+        // Note: I see I need to be careful not to double-add.
+
+        // Let's rely on the dedupe logic we added before, BUT force a stop.
+        if (continuousRef.current) {
+          recognition.stop();
+          // The onend handler will see 'shouldRestartRef' is true and restart us.
+        }
+      }
 
       // Reset silence timer
       if (silenceTimerRef.current) {
