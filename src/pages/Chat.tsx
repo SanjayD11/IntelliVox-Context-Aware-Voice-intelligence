@@ -182,8 +182,26 @@ export default function Chat() {
 
   // Retry last response - controlled regeneration without session reset
   const handleRetry = useCallback(async () => {
-    const lastMessage = lastUserMessageRef.current;
-    if (!lastMessage || !selectedChatId || isAiResponding) return;
+    // Get last user message from ref OR from messages array as fallback
+    let lastMessage = lastUserMessageRef.current;
+
+    // Fallback: Find last user message from the messages array
+    if (!lastMessage) {
+      const currentMessages = messagesRef.current;
+      for (let i = currentMessages.length - 1; i >= 0; i--) {
+        if (currentMessages[i].role === 'user') {
+          lastMessage = currentMessages[i].content;
+          break;
+        }
+      }
+    }
+
+    if (!lastMessage || !selectedChatId || isAiResponding) {
+      console.log('[Retry] Cannot retry: lastMessage=', !!lastMessage, 'chatId=', !!selectedChatId, 'responding=', isAiResponding);
+      return;
+    }
+
+    console.log('[Retry] Starting retry for:', lastMessage.substring(0, 30));
 
     // Stop any ongoing speech first
     if (isSpeaking) {
@@ -350,8 +368,8 @@ export default function Chat() {
             {chats.find(c => c.id === selectedChatId)?.title || 'IntelliVox'}
           </h2>
 
-          {/* Confidence Toggle */}
-          <div className="hidden sm:block">
+          {/* Confidence Toggle - visible on all screen sizes */}
+          <div className="shrink-0">
             <ConfidenceToggle />
           </div>
 
