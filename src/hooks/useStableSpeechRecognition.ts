@@ -159,18 +159,45 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       }
 
       // Update display transcript
-      // MOBILE FIX: Deduplicate final transcript to prevent "hellohello"
+      // MOBILE FIX: Smart Overlap Removal
       if (finalTranscript) {
-        // Clean up the new segment
-        const cleanSegment = finalTranscript.trim();
+        const cleanNew = finalTranscript.trim();
         const currentRef = finalTranscriptRef.current.trim();
 
-        // Only append if we haven't just added this exact segment
-        // This fixes the Android repetitive text bug
-        if (cleanSegment && !currentRef.endsWith(cleanSegment)) {
-          // Add space if we have previous text
-          const prefix = finalTranscriptRef.current ? ' ' : '';
-          finalTranscriptRef.current += prefix + cleanSegment;
+        // Strategy A: If new segment is just an EXTENSION of what we have (e.g. "Hello" -> "Hello world")
+        // We trust the new segment more as it contains more context.
+        if (cleanNew.toLowerCase().startsWith(currentRef.toLowerCase()) && currentRef.length > 0) {
+          finalTranscriptRef.current = cleanNew;
+        }
+        // Strategy B: Standard overlap check
+        else if (currentRef && cleanNew) {
+          let overlapFound = false;
+          // Check overlap of up to 5 words
+          const words = cleanNew.split(' ');
+          // Optimization: Check the whole string first
+          if (currentRef.endsWith(cleanNew)) {
+            overlapFound = true;
+          } else {
+            // Check partial suffix
+            for (let i = words.length; i > 0; i--) {
+              const suffix = words.slice(0, i).join(' ');
+              if (currentRef.endsWith(suffix)) {
+                const remaining = words.slice(i).join(' ');
+                finalTranscriptRef.current += (remaining ? ' ' + remaining : '');
+                overlapFound = true;
+                break;
+              }
+            }
+          }
+
+          if (!overlapFound) {
+            const prefix = finalTranscriptRef.current ? ' ' : '';
+            finalTranscriptRef.current += prefix + cleanNew;
+          }
+        }
+        // Strategy C: First Result
+        else if (!currentRef) {
+          finalTranscriptRef.current = cleanNew;
         }
       }
 
