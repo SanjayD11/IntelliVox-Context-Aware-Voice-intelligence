@@ -424,6 +424,7 @@ export default function Chat() {
           onSendMessage={handleSendMessage}
           disabled={isAiResponding}
           isSpeaking={isSpeaking}
+          onStopSpeaking={handleStopSpeaking}
         />
       </div>
     </div>

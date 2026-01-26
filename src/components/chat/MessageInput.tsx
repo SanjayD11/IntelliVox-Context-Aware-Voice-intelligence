@@ -11,12 +11,15 @@ interface MessageInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
   isSpeaking?: boolean;
+  /** Callback to stop AI speech - used for mobile stop button */
+  onStopSpeaking?: () => void;
 }
 
-export function MessageInput({ 
-  onSendMessage, 
-  disabled, 
+export function MessageInput({
+  onSendMessage,
+  disabled,
   isSpeaking = false,
+  onStopSpeaking,
 }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -45,11 +48,11 @@ export function MessageInput({
     setIsManualListening(false);
   }, []);
 
-  const { 
-    isListening, 
-    transcript, 
-    isSupported, 
-    startListening, 
+  const {
+    isListening,
+    transcript,
+    isSupported,
+    startListening,
     stopListening,
     clearTranscript
   } = useStableSpeechRecognition({
@@ -104,14 +107,23 @@ export function MessageInput({
   return (
     <div className="border-t border-border/50 bg-background/95 backdrop-blur-xl p-4">
       <div className="max-w-3xl mx-auto space-y-3">
-        {/* Speaking indicator */}
+        {/* Speaking indicator with mobile stop button */}
         {isSpeaking && (
-          <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm animate-fade-in">
+          <div className="flex items-center justify-center gap-3 text-muted-foreground text-sm animate-fade-in">
             <VolumeX className="h-4 w-4" />
             <span>AI is speaking...</span>
+            {/* Mobile-only stop button */}
+            {onStopSpeaking && (
+              <button
+                onClick={onStopSpeaking}
+                className="md:hidden px-3 py-1 text-xs font-medium rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/30 transition-all duration-200"
+              >
+                Stop
+              </button>
+            )}
           </div>
         )}
-        
+
         {/* Listening indicator */}
         {isListening && !isSpeaking && (
           <div className="flex items-center justify-center gap-2 text-primary text-sm animate-fade-in">
@@ -122,7 +134,7 @@ export function MessageInput({
             Listening — will auto-send on silence
           </div>
         )}
-        
+
         {/* Input area */}
         <div className="relative flex items-end gap-2 bg-muted/30 rounded-2xl border border-border/50 p-2 transition-all duration-200 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 focus-within:bg-muted/40">
           {/* Manual Mic Button */}
@@ -137,8 +149,8 @@ export function MessageInput({
                   disabled={isSpeaking || disabled}
                   className={cn(
                     'h-10 w-10 rounded-xl shrink-0 transition-all duration-300',
-                    isListening 
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/30 animate-pulse' 
+                    isListening
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/30 animate-pulse'
                       : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                   )}
                 >
@@ -150,10 +162,10 @@ export function MessageInput({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {isSpeaking 
+                {isSpeaking
                   ? 'Wait for AI to finish speaking'
-                  : isListening 
-                    ? 'Stop listening' 
+                  : isListening
+                    ? 'Stop listening'
                     : 'Tap to speak (auto-sends on silence)'
                 }
               </TooltipContent>
@@ -167,10 +179,10 @@ export function MessageInput({
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              isSpeaking 
-                ? "AI is speaking..." 
-                : isListening 
-                  ? "Listening..." 
+              isSpeaking
+                ? "AI is speaking..."
+                : isListening
+                  ? "Listening..."
                   : "Type a message..."
             }
             disabled={disabled || isListening}
