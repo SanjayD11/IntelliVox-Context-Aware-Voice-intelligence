@@ -2,16 +2,26 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 /**
- * Production-hardened Speech Recognition Hook
+ * Production-hardened Speech Recognition Hook v2.0
  * 
- * Key improvements:
- * - Microphone gating support: Respects external gate signals to prevent echo
- * - Clean state management: No stuck listening states
- * - Proper cleanup: No memory leaks or orphaned listeners
- * - Better silence detection: Configurable timeouts
- * - Robust restart logic: Handles browser quirks
- * - STABLE REFERENCES: Callbacks stored in refs to prevent effect recreation
+ * MOBILE-SAFE IMPLEMENTATION:
+ * - Detects mobile devices (Android/iOS) via User Agent
+ * - Disables interimResults on mobile (prevents accumulation)
+ * - Disables continuous mode on mobile (prevents buffer echo)
+ * - Uses REPLACE strategy instead of APPEND on mobile
+ * - Tracks last processed transcript to prevent duplicates
+ * - Single instance guarantee (no concurrent mic sessions)
+ * - Echo prevention via external gating signal
+ * 
+ * Desktop behavior remains unchanged for optimal UX.
  */
+
+// ============ MOBILE DETECTION ============
+function isMobileDevice(): boolean {
+  if (typeof window === 'undefined' || !navigator?.userAgent) return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(ua);
+}
 
 interface UseStableSpeechRecognitionOptions {
   onResult?: (transcript: string) => void;
@@ -41,18 +51,20 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
   const [transcript, setTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(false);
 
+  // ============ REFS FOR STABLE STATE ============
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<number | null>(null);
   const finalTranscriptRef = useRef('');
+  const lastProcessedRef = useRef(''); // DEDUPLICATION: Track last sent transcript
   const restartingRef = useRef(false);
   const shouldRestartRef = useRef(false);
   const isGatedRef = useRef(isGated);
   const startRequestedRef = useRef(false);
   const isListeningRef = useRef(false);
   const isInitializedRef = useRef(false);
+  const isMobileRef = useRef(isMobileDevice());
 
   // ============ STABLE CALLBACK REFS ============
-  // Store callbacks in refs to prevent useEffect recreation
   const onResultRef = useRef(onResult);
   const onInterimRef = useRef(onInterim);
   const onEndRef = useRef(onEnd);
@@ -75,20 +87,18 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  // Keep gate ref in sync - but DON'T auto-stop here
-  // The gating logic is handled in the recognition handlers
+  // Keep gate ref in sync and stop if gated while listening
   useEffect(() => {
     const wasGated = isGatedRef.current;
     isGatedRef.current = isGated;
 
-    // Only stop if we transition FROM ungated TO gated while actively listening
     if (!wasGated && isGated && isListeningRef.current) {
       console.log('[SpeechRecognition] Mic gated while listening - stopping');
       stopListeningInternal();
     }
   }, [isGated]);
 
-  // Internal stop function that doesn't depend on isListening state
+  // Internal stop function
   const stopListeningInternal = useCallback(() => {
     console.log('[SpeechRecognition] stopListeningInternal called');
     shouldRestartRef.current = false;
@@ -109,7 +119,7 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
     setIsListening(false);
   }, []);
 
-  // Initialize speech recognition ONCE
+  // ============ MAIN INITIALIZATION ============
   useEffect(() => {
     // Guard against re-initialization
     if (isInitializedRef.current) {
@@ -131,16 +141,28 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       return;
     }
 
-    console.log('[SpeechRecognition] Initializing speech recognition');
+    const isMobile = isMobileRef.current;
+    console.log('[SpeechRecognition] Initializing. Mobile:', isMobile);
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+
+    // ============ MOBILE-SAFE CONFIGURATION ============
+    if (isMobile) {
+      // MOBILE: Disable features that cause duplication
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      console.log('[SpeechRecognition] Mobile mode: continuous=false, interimResults=false');
+    } else {
+      // DESKTOP: Full features
+      recognition.continuous = true;
+      recognition.interimResults = true;
+    }
+
     recognition.lang = language;
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: any) => {
-      // Ignore results if gated
+      // Ignore results if gated (echo prevention)
       if (isGatedRef.current) {
         console.log('[SpeechRecognition] Ignoring result - mic is gated');
         return;
@@ -158,69 +180,69 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
         }
       }
 
-      // Update display transcript
-      // MOBILE FIX: Smart Overlap Removal
-      if (finalTranscript) {
-        const cleanNew = finalTranscript.trim();
-        const currentRef = finalTranscriptRef.current.trim();
+      // ============ MOBILE-SAFE TRANSCRIPT HANDLING ============
+      if (isMobile) {
+        // MOBILE: REPLACE strategy - never append, always replace
+        if (finalTranscript) {
+          const cleanNew = finalTranscript.trim();
 
-        // Strategy A: If new segment is just an EXTENSION of what we have (e.g. "Hello" -> "Hello world")
-        // We trust the new segment more as it contains more context.
-        if (cleanNew.toLowerCase().startsWith(currentRef.toLowerCase()) && currentRef.length > 0) {
+          // DEDUPLICATION: Check if this is a duplicate of what we just processed
+          if (cleanNew === lastProcessedRef.current) {
+            console.log('[SpeechRecognition] Mobile: Ignoring duplicate:', cleanNew.substring(0, 30));
+            return;
+          }
+
+          // Replace entire transcript with new content
           finalTranscriptRef.current = cleanNew;
+          setTranscript(cleanNew);
+          onInterimRef.current?.(cleanNew);
+
+          console.log('[SpeechRecognition] Mobile: Set transcript to:', cleanNew.substring(0, 30));
         }
-        // Strategy B: Standard overlap check
-        else if (currentRef && cleanNew) {
-          let overlapFound = false;
-          // Check overlap of up to 5 words
-          const words = cleanNew.split(' ');
-          // Optimization: Check the whole string first
-          if (currentRef.endsWith(cleanNew)) {
-            overlapFound = true;
-          } else {
-            // Check partial suffix
-            for (let i = words.length; i > 0; i--) {
-              const suffix = words.slice(0, i).join(' ');
-              if (currentRef.endsWith(suffix)) {
-                const remaining = words.slice(i).join(' ');
-                finalTranscriptRef.current += (remaining ? ' ' + remaining : '');
-                overlapFound = true;
-                break;
+      } else {
+        // DESKTOP: Smart overlap removal (existing logic)
+        if (finalTranscript) {
+          const cleanNew = finalTranscript.trim();
+          const currentRef = finalTranscriptRef.current.trim();
+
+          // Strategy A: Extension detection
+          if (cleanNew.toLowerCase().startsWith(currentRef.toLowerCase()) && currentRef.length > 0) {
+            finalTranscriptRef.current = cleanNew;
+          }
+          // Strategy B: Overlap detection
+          else if (currentRef && cleanNew) {
+            let overlapFound = false;
+            const words = cleanNew.split(' ');
+
+            if (currentRef.endsWith(cleanNew)) {
+              overlapFound = true;
+            } else {
+              for (let i = words.length; i > 0; i--) {
+                const suffix = words.slice(0, i).join(' ');
+                if (currentRef.endsWith(suffix)) {
+                  const remaining = words.slice(i).join(' ');
+                  finalTranscriptRef.current += (remaining ? ' ' + remaining : '');
+                  overlapFound = true;
+                  break;
+                }
               }
             }
+
+            if (!overlapFound) {
+              const prefix = finalTranscriptRef.current ? ' ' : '';
+              finalTranscriptRef.current += prefix + cleanNew;
+            }
           }
-
-          if (!overlapFound) {
-            const prefix = finalTranscriptRef.current ? ' ' : '';
-            finalTranscriptRef.current += prefix + cleanNew;
+          // Strategy C: First result
+          else if (!currentRef) {
+            finalTranscriptRef.current = cleanNew;
           }
         }
-        // Strategy C: First Result
-        else if (!currentRef) {
-          finalTranscriptRef.current = cleanNew;
-        }
-      }
 
-      // Reconstruct full transcript for display
-      const currentTranscript = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
-      setTranscript(currentTranscript);
-      onInterimRef.current?.(currentTranscript);
-
-      // NUCLEAR OPTION FOR MOBILE:
-      // If we got a final result, force a restart by stopping immediately.
-      // This wipes the browser's internal legacy buffer which causes the "hellohello" bug.
-      if (finalTranscript) {
-        console.log('[SpeechRecognition] Final result received, force-resetting to prevent Android echo');
-        // We do NOT append here. We rely on the fact that we processed it above.
-        // But we MUST check if we processed it. 
-        // Actually, the previous logic (lines 161-171) added it to finalTranscriptRef.
-        // Note: I see I need to be careful not to double-add.
-
-        // Let's rely on the dedupe logic we added before, BUT force a stop.
-        if (continuousRef.current) {
-          recognition.stop();
-          // The onend handler will see 'shouldRestartRef' is true and restart us.
-        }
+        // Desktop: Show interim results
+        const currentTranscript = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
+        setTranscript(currentTranscript);
+        onInterimRef.current?.(currentTranscript);
       }
 
       // Reset silence timer
@@ -228,17 +250,25 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
         clearTimeout(silenceTimerRef.current);
       }
 
-      // Set silence detection timer
+      // Set silence detection timer to send final result
       if (finalTranscriptRef.current.trim()) {
         silenceTimerRef.current = window.setTimeout(() => {
           const fullTranscript = finalTranscriptRef.current.trim();
+
+          // DEDUPLICATION: Don't send if same as last processed
+          if (fullTranscript === lastProcessedRef.current) {
+            console.log('[SpeechRecognition] Silence: Skipping duplicate');
+            return;
+          }
+
           if (fullTranscript && onResultRef.current && !isGatedRef.current) {
-            console.log('[SpeechRecognition] Silence detected, sending result:', fullTranscript.substring(0, 50));
+            console.log('[SpeechRecognition] Silence detected, sending:', fullTranscript.substring(0, 50));
+            lastProcessedRef.current = fullTranscript; // Mark as processed
             onResultRef.current(fullTranscript);
             finalTranscriptRef.current = '';
             setTranscript('');
 
-            if (!continuousRef.current) {
+            if (!continuousRef.current || isMobile) {
               recognition.stop();
             }
           }
@@ -250,13 +280,34 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       console.log('[SpeechRecognition] ✅ Recognition STARTED');
       setIsListening(true);
       isListeningRef.current = true;
-      startRequestedRef.current = false; // Clear the request flag since we're now started
+      startRequestedRef.current = false;
     };
 
     recognition.onend = () => {
-      console.log('[SpeechRecognition] Recognition ended, shouldRestart:', shouldRestartRef.current, 'isGated:', isGatedRef.current);
+      console.log('[SpeechRecognition] Recognition ended, shouldRestart:', shouldRestartRef.current);
 
-      // Handle restart for continuous mode
+      // MOBILE: Never auto-restart to prevent loops
+      if (isMobile) {
+        setIsListening(false);
+        isListeningRef.current = false;
+
+        // Send any remaining transcript
+        if (finalTranscriptRef.current.trim() && onResultRef.current && !isGatedRef.current) {
+          const fullTranscript = finalTranscriptRef.current.trim();
+          if (fullTranscript !== lastProcessedRef.current) {
+            console.log('[SpeechRecognition] Mobile onend: Sending remaining:', fullTranscript.substring(0, 30));
+            lastProcessedRef.current = fullTranscript;
+            onResultRef.current(fullTranscript);
+          }
+          finalTranscriptRef.current = '';
+        }
+
+        onEndRef.current?.();
+        startRequestedRef.current = false;
+        return;
+      }
+
+      // DESKTOP: Handle restart for continuous mode
       if (shouldRestartRef.current && !restartingRef.current && !isGatedRef.current) {
         restartingRef.current = true;
         console.log('[SpeechRecognition] Scheduling restart for continuous mode');
@@ -266,7 +317,6 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
               console.log('[SpeechRecognition] Restarting...');
               recognition.start();
             } else {
-              console.log('[SpeechRecognition] Restart cancelled - shouldRestart:', shouldRestartRef.current, 'isGated:', isGatedRef.current);
               setIsListening(false);
               isListeningRef.current = false;
             }
@@ -292,8 +342,12 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
 
       // Send any remaining transcript
       if (finalTranscriptRef.current.trim() && onResultRef.current && !isGatedRef.current) {
-        console.log('[SpeechRecognition] Sending remaining transcript on end');
-        onResultRef.current(finalTranscriptRef.current.trim());
+        const fullTranscript = finalTranscriptRef.current.trim();
+        if (fullTranscript !== lastProcessedRef.current) {
+          console.log('[SpeechRecognition] Sending remaining transcript on end');
+          lastProcessedRef.current = fullTranscript;
+          onResultRef.current(fullTranscript);
+        }
         finalTranscriptRef.current = '';
       }
 
@@ -305,7 +359,6 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       console.error('[SpeechRecognition] Error:', event.error);
 
       if (event.error === 'no-speech' || event.error === 'aborted') {
-        // Non-fatal errors - don't stop listening
         console.log('[SpeechRecognition] Non-fatal error, continuing...');
         return;
       }
@@ -337,7 +390,7 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       }
       isInitializedRef.current = false;
     };
-  }, [language]); // ONLY language as dependency - callbacks are in refs!
+  }, [language]);
 
   const startListening = useCallback(() => {
     // Don't start if gated
@@ -346,12 +399,12 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       return false;
     }
 
-    // Use ref for checking listening state to avoid stale closure
     if (!recognitionRef.current) {
       console.log('[SpeechRecognition] Cannot start - recognition not initialized');
       return false;
     }
 
+    // SINGLE INSTANCE GUARANTEE: Prevent double-start
     if (isListeningRef.current) {
       console.log('[SpeechRecognition] Already listening, ignoring start request');
       return true;
@@ -363,9 +416,14 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
     }
 
     console.log('[SpeechRecognition] Starting listening...');
+
+    // Clear previous state
     setTranscript('');
     finalTranscriptRef.current = '';
-    shouldRestartRef.current = continuousRef.current;
+    lastProcessedRef.current = ''; // Reset deduplication on new session
+
+    // Only enable auto-restart for desktop continuous mode
+    shouldRestartRef.current = continuousRef.current && !isMobileRef.current;
     startRequestedRef.current = true;
 
     try {
@@ -395,6 +453,7 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
   const clearTranscript = useCallback(() => {
     setTranscript('');
     finalTranscriptRef.current = '';
+    lastProcessedRef.current = '';
   }, []);
 
   return {
