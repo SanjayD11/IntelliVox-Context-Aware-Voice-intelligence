@@ -159,13 +159,26 @@ export function useStableSpeechRecognition(options: UseStableSpeechRecognitionOp
       }
 
       // Update display transcript
-      const currentTranscript = finalTranscriptRef.current + (finalTranscript || interimTranscript);
+      // MOBILE FIX: Deduplicate final transcript to prevent "hellohello"
+      if (finalTranscript) {
+        // Clean up the new segment
+        const cleanSegment = finalTranscript.trim();
+        const currentRef = finalTranscriptRef.current.trim();
+
+        // Only append if we haven't just added this exact segment
+        // This fixes the Android repetitive text bug
+        if (cleanSegment && !currentRef.endsWith(cleanSegment)) {
+          // Add space if we have previous text
+          const prefix = finalTranscriptRef.current ? ' ' : '';
+          finalTranscriptRef.current += prefix + cleanSegment;
+        }
+      }
+
+      // Reconstruct full transcript for display
+      // We combine our stable final ref with the current interim
+      const currentTranscript = finalTranscriptRef.current + (interimTranscript ? ' ' + interimTranscript : '');
       setTranscript(currentTranscript);
       onInterimRef.current?.(currentTranscript);
-
-      if (finalTranscript) {
-        finalTranscriptRef.current += finalTranscript;
-      }
 
       // Reset silence timer
       if (silenceTimerRef.current) {
