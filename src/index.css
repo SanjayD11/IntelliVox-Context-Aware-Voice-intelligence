@@ -1,0 +1,501 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Calm, professional color palette with warm amber accent */
+    --background: 0 0% 99%;
+    --foreground: 220 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    /* Warm amber accent - refined and premium */
+    --primary: 32 95% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 10% 96%;
+    --secondary-foreground: 220 15% 25%;
+
+    --muted: 220 10% 96%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 220 10% 94%;
+    --accent-foreground: 220 15% 15%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 10% 90%;
+    --input: 220 10% 94%;
+    --ring: 32 95% 52%;
+
+    --success: 152 60% 42%;
+    --warning: 38 92% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 32 95% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 10% 96%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 220 10% 92%;
+    --sidebar-ring: 32 95% 52%;
+  }
+
+  .dark {
+    --background: 220 15% 8%;
+    --foreground: 220 10% 95%;
+
+    --card: 220 15% 10%;
+    --card-foreground: 220 10% 95%;
+
+    --popover: 220 15% 10%;
+    --popover-foreground: 220 10% 95%;
+
+    --primary: 32 95% 55%;
+    --primary-foreground: 220 15% 8%;
+
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 220 10% 90%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 220 15% 18%;
+    --accent-foreground: 220 10% 95%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 15%;
+    --ring: 32 95% 55%;
+
+    --success: 152 60% 45%;
+    --warning: 38 92% 50%;
+
+    --sidebar-background: 220 15% 6%;
+    --sidebar-foreground: 220 10% 95%;
+    --sidebar-primary: 32 95% 55%;
+    --sidebar-primary-foreground: 220 15% 8%;
+    --sidebar-accent: 220 15% 12%;
+    --sidebar-accent-foreground: 220 10% 95%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 32 95% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Glass Effects */
+.glass {
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-light {
+  background: hsl(var(--background) / 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Subtle Glow Effects */
+.glow-primary {
+  box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.25);
+}
+
+.glow-primary-intense {
+  box-shadow: 0 0 30px -5px hsl(var(--primary) / 0.35);
+}
+
+.glow-success {
+  box-shadow: 0 0 25px -5px hsl(var(--success) / 0.3);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--muted-foreground)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle Gradient Backgrounds */
+.gradient-bg {
+  background: linear-gradient(180deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--muted) / 0.3) 100%);
+}
+
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse at 20% 20%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, hsl(var(--accent) / 0.05) 0%, transparent 50%),
+    hsl(var(--background));
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes breathing {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes listening-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Speaking Wave Animation */
+@keyframes speaking-wave {
+
+  0%,
+  100% {
+    height: 4px;
+  }
+
+  50% {
+    height: 20px;
+  }
+}
+
+@keyframes speaking-pulse {
+
+  0%,
+  100% {
+    transform: scaleY(0.25);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.35s ease-out forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.5) 50%,
+      hsl(var(--muted)) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-breathing {
+  animation: breathing 6s ease-in-out infinite;
+}
+
+.animate-listening-pulse {
+  animation: listening-pulse 1.5s infinite;
+}
+
+.animate-ripple {
+  animation: ripple 1.5s infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-speaking-wave {
+  animation: speaking-wave 0.6s ease-in-out infinite;
+}
+
+.animate-speaking-bar {
+  animation: speaking-pulse 0.6s ease-in-out infinite;
+}
+
+/* Smooth theme transitions */
+html {
+  color-scheme: light dark;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+* {
+  transition-property: background-color, border-color;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+}
+
+/* Interactive Elements */
+.interactive {
+  @apply transition-all duration-200 ease-out;
+}
+
+.interactive:hover {
+  @apply transform scale-[1.02];
+}
+
+.interactive:active {
+  @apply transform scale-[0.98];
+}
+
+/* Card Hover Effects */
+.card-hover {
+  @apply transition-all duration-300 ease-out;
+}
+
+.card-hover:hover {
+  @apply shadow-lg transform -translate-y-0.5;
+}
+
+/* Button Press Effect */
+.btn-press {
+  @apply transition-transform duration-150 ease-out;
+}
+
+.btn-press:active {
+  @apply transform scale-[0.97];
+}
+
+/* Focus Ring */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+/* Shimmer Effect */
+.shimmer {
+  background: linear-gradient(90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Voice Button Special Style */
+.voice-button {
+  @apply relative overflow-hidden;
+}
+
+.voice-button::before {
+  content: '';
+  @apply absolute inset-0 rounded-full opacity-0 transition-opacity duration-300;
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
+}
+
+.voice-button:hover::before {
+  @apply opacity-100;
+}
+
+/* Stagger animation delays */
+.stagger-1 {
+  animation-delay: 50ms;
+}
+
+.stagger-2 {
+  animation-delay: 100ms;
+}
+
+.stagger-3 {
+  animation-delay: 150ms;
+}
+
+.stagger-4 {
+  animation-delay: 200ms;
+}
+
+.stagger-5 {
+  animation-delay: 250ms;
+}
