@@ -1,7 +1,7 @@
 # IntelliVox 🎙️
 ### Context-Aware Voice Intelligence
 
-![IntelliVox Banner](https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=2560&auto=format&fit=crop)
+![IntelliVox Banner](https://www.skyfilabs.com/project-ideas/ai-based-voice-assistant)
 
 > **Experience the next generation of voice AI. Seamless, real-time, and context-aware conversations directly in your browser.**
 
