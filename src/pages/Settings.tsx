@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Camera, Upload, Sparkles, Sun, Moon, Monitor, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Camera, Upload, Sparkles, Sun, Moon, Monitor, AlertCircle, CheckCircle2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { ProfileAvatar } from '@/components/profile/ProfileAvatar';
 import { Footer } from '@/components/layout/Footer';
 import { IntelliVoxLogo } from '@/components/brand/IntelliVoxLogo';
+import { isMobileDevice } from '@/utils/deviceDetection';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -70,6 +71,9 @@ export default function Settings() {
   // Languages that support male voice
   const MALE_VOICE_SUPPORTED = ['en-US', 'en-GB', 'es-ES', 'es-MX', 'tr-TR'];
   const isMaleSupported = MALE_VOICE_SUPPORTED.includes(settings.voice_language);
+
+  // Detect if on mobile device for voice notice
+  const isMobile = isMobileDevice();
 
   // Check if selected language has full voice support
   const selectedLang = VOICE_LANGUAGES.find(l => l.value === settings.voice_language);
@@ -378,6 +382,16 @@ export default function Settings() {
                   <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <p className="text-sm text-muted-foreground">
                     Male voice is currently available only for English (US/UK), Spanish (Spain/Mexico), and Turkish. Other languages use the standard voice profile.
+                  </p>
+                </div>
+              )}
+
+              {/* Mobile male voice notice - only shows on mobile when male is selected */}
+              {isMobile && settings.voice_gender === 'male' && (
+                <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-start gap-3 animate-fade-in">
+                  <Smartphone className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-primary">Mobile Device Detected:</span> Male voices have limited availability on mobile browsers. We're using a deeper pitch to simulate a more masculine voice.
                   </p>
                 </div>
               )}

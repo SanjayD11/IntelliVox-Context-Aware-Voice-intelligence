@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { isMobileDevice } from '@/utils/deviceDetection';
 
 /**
  * Production-hardened Speech Synthesis Hook
@@ -125,6 +126,9 @@ export function useStableSpeechSynthesis(options: UseStableSpeechSynthesisOption
     onEnd,
     onError
   } = options;
+
+  // Mobile voice workaround: detect if on mobile device
+  const isMobile = isMobileDevice();
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
@@ -321,7 +325,17 @@ export function useStableSpeechSynthesis(options: UseStableSpeechSynthesisOption
       }
 
       utterance.rate = rate;
-      utterance.pitch = pitch;
+
+      // Mobile pitch adjustment: if male voice is selected on mobile,
+      // use lower pitch (0.85) to simulate a deeper/masculine voice
+      // since native male voices are typically unavailable on mobile
+      let effectivePitch = pitch;
+      if (isMobile && voiceGenderRef.current === 'male') {
+        effectivePitch = Math.min(pitch * 0.85, 0.85); // Cap at 0.85 for male-like sound
+        console.log('[TTS] Mobile male voice: applying pitch adjustment', effectivePitch);
+      }
+
+      utterance.pitch = effectivePitch;
       utterance.volume = 1;
 
       utterance.onend = () => {
