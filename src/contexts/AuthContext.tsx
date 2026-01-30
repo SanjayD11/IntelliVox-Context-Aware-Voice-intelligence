@@ -22,34 +22,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session) => {
-        console.log('Auth event:', event, 'Session:', session ? 'present' : 'null');
+        console.log('[AuthContext] Auth event:', event, 'Session:', session ? 'present' : 'null');
+        console.log('[AuthContext] Current path:', window.location.pathname);
 
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Handle password recovery event - redirect to update password page
-        if (event === 'PASSWORD_RECOVERY') {
-          console.log('PASSWORD_RECOVERY event detected, redirecting to /update-password');
-          // Use setTimeout to ensure state is updated before navigation
-          setTimeout(() => {
-            window.location.href = '/update-password';
-          }, 100);
+        // IMPORTANT: Do NOT redirect if we're on the auth/callback or update-password page
+        // Let those pages handle their own auth flow
+        const path = window.location.pathname;
+        if (path === '/auth/callback' || path === '/update-password') {
+          console.log('[AuthContext] On callback/update-password page, skipping redirect');
+          return;
         }
 
-        // Handle successful sign in from email confirmation
-        if (event === 'SIGNED_IN' && session) {
-          // Check if we're on a callback page or root with hash
-          const path = window.location.pathname;
-          const hash = window.location.hash;
-
-          // If on root or auth/callback and hash contains tokens, redirect to chat
-          if ((path === '/' || path === '/auth/callback') && hash.includes('access_token')) {
-            console.log('SIGNED_IN from email link, redirecting to /chat');
-            setTimeout(() => {
-              window.location.href = '/chat';
-            }, 100);
-          }
+        // Handle password recovery event - redirect to update password page
+        // This handles the case where user clicks email link that goes to root with hash
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('[AuthContext] PASSWORD_RECOVERY event detected, redirecting to /update-password');
+          window.location.href = '/update-password';
+          return;
         }
       }
     );
