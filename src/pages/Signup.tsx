@@ -1,17 +1,28 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle, Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle, Mail, Lock, ArrowRight, Sparkles, User, Check, X } from 'lucide-react';
 import { Footer } from '@/components/layout/Footer';
 import { IntelliVoxLogo } from '@/components/brand/IntelliVoxLogo';
+import { cn } from '@/lib/utils';
+
+// Password validation requirements
+const PASSWORD_REQUIREMENTS = [
+  { id: 'length', label: 'At least 8 characters', test: (pw: string) => pw.length >= 8 },
+  { id: 'uppercase', label: 'One uppercase letter (A-Z)', test: (pw: string) => /[A-Z]/.test(pw) },
+  { id: 'lowercase', label: 'One lowercase letter (a-z)', test: (pw: string) => /[a-z]/.test(pw) },
+  { id: 'number', label: 'One number (0-9)', test: (pw: string) => /[0-9]/.test(pw) },
+  { id: 'special', label: 'One special character (!@#$%^&*)', test: (pw: string) => /[!@#$%^&*]/.test(pw) },
+];
 
 export default function Signup() {
   const navigate = useNavigate();
   const { signUp, user, loading: authLoading } = useAuth();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,6 +32,39 @@ export default function Signup() {
 
   const handleLogoClick = () => {
     navigate('/');
+  };
+
+  // Password strength validation
+  const passwordValidation = useMemo(() => {
+    return PASSWORD_REQUIREMENTS.map(req => ({
+      ...req,
+      passed: req.test(password),
+    }));
+  }, [password]);
+
+  const allRequirementsPassed = passwordValidation.every(req => req.passed);
+  const passedCount = passwordValidation.filter(req => req.passed).length;
+
+  // Calculate strength level for visual indicator
+  const strengthLevel = useMemo(() => {
+    if (passedCount <= 1) return 'weak';
+    if (passedCount <= 3) return 'medium';
+    if (passedCount <= 4) return 'good';
+    return 'strong';
+  }, [passedCount]);
+
+  const strengthColors = {
+    weak: 'bg-destructive',
+    medium: 'bg-warning',
+    good: 'bg-primary',
+    strong: 'bg-success',
+  };
+
+  const strengthLabels = {
+    weak: 'Weak',
+    medium: 'Medium',
+    good: 'Good',
+    strong: 'Strong',
   };
 
   if (authLoading) {
@@ -53,19 +97,31 @@ export default function Signup() {
     e.preventDefault();
     setError(null);
 
+    // Validate full name
+    if (!fullName.trim()) {
+      setError('Please enter your full name.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    // Check all password requirements
+    if (!allRequirementsPassed) {
+      setError('Please meet all password requirements.');
       return;
     }
 
     setLoading(true);
 
-    const { error, needsConfirmation } = await signUp(email, password);
+    // Split full name into first and last name
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    const { error, needsConfirmation } = await signUp(email, password, firstName, lastName);
 
     if (error) {
       if (error.message.includes('already registered')) {
@@ -158,6 +214,25 @@ export default function Signup() {
                   {error}
                 </div>
               )}
+
+              {/* Full Name Field */}
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Doe"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="pl-10 bg-input/50 border-border/50 h-12 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
@@ -173,6 +248,8 @@ export default function Signup() {
                   />
                 </div>
               </div>
+
+              {/* Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <div className="relative">
@@ -187,8 +264,59 @@ export default function Signup() {
                     className="pl-10 bg-input/50 border-border/50 h-12 rounded-xl"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">At least 6 characters</p>
+
+                {/* Password Strength Indicator */}
+                {password.length > 0 && (
+                  <div className="space-y-3 pt-2 animate-fade-in">
+                    {/* Strength Bar */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Password strength</span>
+                        <span className={cn(
+                          "font-medium",
+                          strengthLevel === 'weak' && "text-destructive",
+                          strengthLevel === 'medium' && "text-warning",
+                          strengthLevel === 'good' && "text-primary",
+                          strengthLevel === 'strong' && "text-success"
+                        )}>
+                          {strengthLabels[strengthLevel]}
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-300 rounded-full",
+                            strengthColors[strengthLevel]
+                          )}
+                          style={{ width: `${(passedCount / PASSWORD_REQUIREMENTS.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Requirements Checklist */}
+                    <div className="grid grid-cols-1 gap-1.5 p-3 rounded-xl bg-muted/30 border border-border/30">
+                      {passwordValidation.map((req) => (
+                        <div
+                          key={req.id}
+                          className={cn(
+                            "flex items-center gap-2 text-xs transition-colors",
+                            req.passed ? "text-success" : "text-muted-foreground"
+                          )}
+                        >
+                          {req.passed ? (
+                            <Check className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <X className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+                          )}
+                          <span>{req.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Confirm Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
                 <div className="relative">
@@ -203,13 +331,25 @@ export default function Signup() {
                     className="pl-10 bg-input/50 border-border/50 h-12 rounded-xl"
                   />
                 </div>
+                {confirmPassword && password !== confirmPassword && (
+                  <p className="text-xs text-destructive animate-fade-in flex items-center gap-1">
+                    <X className="h-3 w-3" />
+                    Passwords do not match
+                  </p>
+                )}
+                {confirmPassword && password === confirmPassword && password.length > 0 && (
+                  <p className="text-xs text-success animate-fade-in flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Passwords match
+                  </p>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4 pt-2">
               <Button
                 type="submit"
                 className="w-full h-12 rounded-xl text-base font-medium gap-2 btn-press"
-                disabled={loading}
+                disabled={loading || !allRequirementsPassed || password !== confirmPassword || !fullName.trim()}
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />

@@ -9,6 +9,16 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -67,6 +77,7 @@ export default function Settings() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   // Languages that support male voice
   const MALE_VOICE_SUPPORTED = ['en-US', 'en-GB', 'es-ES', 'es-MX', 'tr-TR'];
@@ -146,6 +157,7 @@ export default function Settings() {
   };
 
   const handleSignOut = async () => {
+    setLogoutDialogOpen(false);
     await signOut();
     navigate('/login');
   };
@@ -533,13 +545,34 @@ export default function Settings() {
 
             <Button
               variant="destructive"
-              onClick={handleSignOut}
+              onClick={() => setLogoutDialogOpen(true)}
               className="w-full h-11 rounded-xl font-medium"
             >
               Sign Out
             </Button>
           </CardContent>
         </Card>
+
+        {/* Logout confirmation dialog */}
+        <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+          <AlertDialogContent className="rounded-2xl animate-scale-in">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Sign out?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to sign out of your account?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSignOut}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+              >
+                Sign Out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <Footer />

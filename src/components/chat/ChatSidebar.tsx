@@ -50,10 +50,11 @@ export function ChatSidebar({
   const { profile, displayName, initials } = useProfile();
   const navigate = useNavigate();
   const [filteredChats, setFilteredChats] = useState<Chat[]>(chats);
-  
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const handleSearchResults = useCallback((results: Chat[]) => {
     setFilteredChats(results);
@@ -74,6 +75,7 @@ export function ChatSidebar({
   };
 
   const handleSignOut = async () => {
+    setLogoutDialogOpen(false);
     await signOut();
     navigate('/login');
   };
@@ -105,7 +107,7 @@ export function ChatSidebar({
           onClick={onCloseMobile}
         />
       )}
-      
+
       <div
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-80 bg-sidebar-background/95 backdrop-blur-xl border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-out md:relative md:translate-x-0',
@@ -115,8 +117,8 @@ export function ChatSidebar({
         {/* Header */}
         <div className="p-4 border-b border-sidebar-border/50 space-y-4">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={handleLogoClick} 
+            <button
+              onClick={handleLogoClick}
               className="flex items-center gap-3 hover:opacity-80 transition-opacity flex-1 min-w-0"
             >
               <IntelliVoxLogo size="md" />
@@ -136,15 +138,15 @@ export function ChatSidebar({
               <X className="h-5 w-5" />
             </Button>
           </div>
-          
-          <Button 
-            onClick={onNewChat} 
+
+          <Button
+            onClick={onNewChat}
             className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl font-medium shadow-lg shadow-primary/20 btn-press"
           >
             <Plus className="h-5 w-5" />
             New Chat
           </Button>
-          
+
           <ChatSearch chats={chats} onSearchResults={handleSearchResults} />
         </div>
 
@@ -170,14 +172,14 @@ export function ChatSidebar({
                 onDelete={() => handleConfirmDelete(chat.id)}
               />
             ))}
-            
+
             {displayChats.length === 0 && chats.length > 0 && (
               <div className="text-center py-10 text-sm text-muted-foreground">
                 <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
                 No matching chats
               </div>
             )}
-            
+
             {chats.length === 0 && (
               <div className="text-center py-10 px-4">
                 <div className="h-14 w-14 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
@@ -197,9 +199,9 @@ export function ChatSidebar({
         {/* Footer */}
         <div className="p-3 border-t border-sidebar-border/50 space-y-1">
           <Link to="/voice" onClick={onCloseMobile}>
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start gap-3 h-11 rounded-xl hover:bg-primary/10 text-foreground" 
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-11 rounded-xl hover:bg-primary/10 text-foreground"
               size="sm"
             >
               <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
@@ -209,9 +211,9 @@ export function ChatSidebar({
             </Button>
           </Link>
           <Link to="/settings" onClick={onCloseMobile}>
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start gap-3 h-11 rounded-xl" 
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 h-11 rounded-xl"
               size="sm"
             >
               <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
@@ -220,25 +222,25 @@ export function ChatSidebar({
               <span>Settings</span>
             </Button>
           </Link>
-          
+
           <div className="pt-3 mt-2 border-t border-sidebar-border/50">
             <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-sidebar-accent/50 transition-colors">
-              <ProfileAvatar 
-                src={profile.avatar_url} 
-                initials={initials} 
-                size="sm" 
+              <ProfileAvatar
+                src={profile.avatar_url}
+                initials={initials}
+                size="sm"
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{displayName}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
-            
+
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 h-10 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 mt-1"
               size="sm"
-              onClick={handleSignOut}
+              onClick={() => setLogoutDialogOpen(true)}
             >
               <LogOut className="h-4 w-4" />
               <span>Sign Out</span>
@@ -258,11 +260,32 @@ export function ChatSidebar({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Logout confirmation dialog */}
+      <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <AlertDialogContent className="rounded-2xl animate-scale-in">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to sign out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSignOut}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
+            >
+              Sign Out
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

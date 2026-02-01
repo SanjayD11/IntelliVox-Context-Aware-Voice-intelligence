@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null; needsConfirmation: boolean }>;
+  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ error: AuthError | null; needsConfirmation: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
 }
@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -68,6 +68,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       return { error, needsConfirmation: false };
+    }
+
+    // If signup successful and we have a user, save their profile
+    if (data.user && (firstName || lastName)) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          first_name: firstName || '',
+          last_name: lastName || '',
+          updated_at: new Date().toISOString(),
+        });
+
+      if (profileError) {
+        console.error('[AuthContext] Error saving profile:', profileError);
+        // Don't fail signup if profile save fails - the user can update it later
+      }
     }
 
     // Check if email confirmation is required
