@@ -44,6 +44,12 @@ export default function Login() {
   }
 
   if (user) {
+    // Check for stored redirect destination (e.g., from suggestion clicks on home page)
+    const storedRedirect = sessionStorage.getItem('intellivox_redirect_to');
+    if (storedRedirect) {
+      sessionStorage.removeItem('intellivox_redirect_to');
+      return <Navigate to={storedRedirect} replace />;
+    }
     return <Navigate to="/chat" replace />;
   }
 
