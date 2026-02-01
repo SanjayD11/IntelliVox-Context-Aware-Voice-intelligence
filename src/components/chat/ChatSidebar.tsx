@@ -146,7 +146,7 @@ export function ChatSidebar({
               variant="ghost"
               size="icon"
               onClick={onCloseMobile}
-              className="md:hidden h-9 w-9 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg shrink-0"
+              className="md:hidden h-9 w-9 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg shrink-0 relative z-10"
             >
               <X className="h-5 w-5" />
             </Button>
