@@ -64,6 +64,18 @@ export function ChatSidebar({
     setFilteredChats(chats);
   }, [chats]);
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (isMobileOpen) {
+      document.body.classList.add('sidebar-open');
+    } else {
+      document.body.classList.remove('sidebar-open');
+    }
+    return () => {
+      document.body.classList.remove('sidebar-open');
+    };
+  }, [isMobileOpen]);
+
   const displayChats = filteredChats;
 
   const handleDelete = async () => {
@@ -110,9 +122,10 @@ export function ChatSidebar({
 
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-80 bg-sidebar-background/95 backdrop-blur-xl border-r border-sidebar-border flex flex-col transition-transform duration-300 ease-out md:relative md:translate-x-0',
-          isMobileOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full md:translate-x-0'
+          'fixed inset-y-0 left-0 z-50 w-80 bg-sidebar-background/95 backdrop-blur-xl border-r border-sidebar-border flex flex-col md:relative md:translate-x-0 sidebar-container',
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
+        style={{ transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         {/* Header */}
         <div className="p-4 border-b border-sidebar-border/50 space-y-4">
@@ -151,7 +164,7 @@ export function ChatSidebar({
         </div>
 
         {/* Chat List - Using unified ChatCard component */}
-        <ScrollArea className="flex-1 px-2 py-3">
+        <ScrollArea className="flex-1 px-2 py-3 scroll-stable">
           <div className="space-y-1.5">
             {displayChats.map((chat) => (
               <ChatCard

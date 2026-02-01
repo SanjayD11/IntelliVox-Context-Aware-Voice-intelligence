@@ -412,10 +412,49 @@ html.light {
   color-scheme: light;
 }
 
+/* Smooth theme transitions - exclude scroll-affecting properties */
 * {
-  transition-property: background-color, border-color;
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow;
   transition-duration: 0.2s;
   transition-timing-function: ease-out;
+}
+
+/* Disable transitions during scroll to prevent jank */
+.is-scrolling,
+.is-scrolling * {
+  transition: none !important;
+}
+
+/* Body scroll lock when sidebar is open */
+body.sidebar-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  touch-action: none;
+}
+
+/* GPU-accelerated sidebar container */
+.sidebar-container {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Stable scroll area */
+.scroll-stable {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+  contain: strict;
+}
+
+/* Prevent content shift during scroll */
+.scroll-stable>* {
+  transform: translateZ(0);
 }
 
 /* Interactive Elements */
