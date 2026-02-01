@@ -64,18 +64,6 @@ export function ChatSidebar({
     setFilteredChats(chats);
   }, [chats]);
 
-  // Lock body scroll when mobile sidebar is open
-  useEffect(() => {
-    if (isMobileOpen) {
-      document.body.classList.add('sidebar-open');
-    } else {
-      document.body.classList.remove('sidebar-open');
-    }
-    return () => {
-      document.body.classList.remove('sidebar-open');
-    };
-  }, [isMobileOpen]);
-
   const displayChats = filteredChats;
 
   const handleDelete = async () => {
@@ -106,26 +94,40 @@ export function ChatSidebar({
     navigate('/');
   };
 
+  // Don't render if collapsed on desktop (mobile uses CSS transforms)
   if (isCollapsed && !isMobileOpen) {
     return null;
   }
+
+  // Handle close button click
+  const handleClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onCloseMobile?.();
+  };
 
   return (
     <>
       {/* Mobile overlay */}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-fade-in"
-          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={handleClose}
+          aria-hidden="true"
         />
       )}
 
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-80 bg-sidebar-background/95 backdrop-blur-xl border-r border-sidebar-border flex flex-col md:relative md:translate-x-0 sidebar-container',
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          'bg-sidebar-background/95 backdrop-blur-xl border-r border-sidebar-border flex flex-col',
+          // Mobile: fixed overlay when open, hidden when closed
+          'fixed inset-y-0 left-0 z-50 w-80 md:relative md:z-auto',
+          // Only show on mobile when isMobileOpen is true
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full',
+          // Always visible on desktop
+          'md:translate-x-0'
         )}
-        style={{ transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+        style={{ transition: 'transform 0.3s ease-out' }}
       >
         {/* Header */}
         <div className="p-4 border-b border-sidebar-border/50 space-y-4">
@@ -145,8 +147,9 @@ export function ChatSidebar({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onCloseMobile}
-              className="md:hidden h-9 w-9 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg shrink-0 relative z-10"
+              onClick={handleClose}
+              className="md:hidden h-9 w-9 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg shrink-0"
+              aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
             </Button>
