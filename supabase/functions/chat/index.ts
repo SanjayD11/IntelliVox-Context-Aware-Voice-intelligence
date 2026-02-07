@@ -81,9 +81,13 @@ function createFallbackResponse(language: string | undefined) {
   );
 }
 
-// Try Pollinations.ai API
+// Try Pollinations.ai API with timeout
 async function tryPollinations(systemPrompt: string, messages: any[], temperature: number): Promise<Response | null> {
   try {
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
     const response = await fetch("https://text.pollinations.ai/openai", {
       method: "POST",
       headers: {
@@ -98,7 +102,10 @@ async function tryPollinations(systemPrompt: string, messages: any[], temperatur
         stream: true,
         temperature: temperature,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error("Pollinations API error:", response.status);
@@ -107,7 +114,11 @@ async function tryPollinations(systemPrompt: string, messages: any[], temperatur
 
     return response;
   } catch (error) {
-    console.error("Pollinations fetch error:", error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error("Pollinations timeout (3s)");
+    } else {
+      console.error("Pollinations fetch error:", error);
+    }
     return null;
   }
 }
@@ -213,13 +224,6 @@ You must always answer questions about the creator using these PRE-APPROVED FACT
     // Build system prompt
     let systemPrompt = `You are IntelliVox, a helpful and friendly AI assistant. Keep your responses clear, concise, and conversational. Be helpful and engaging while maintaining a professional tone.
 
-FORMATTING RULES:
-- Do NOT use markdown formatting (no **, ##, \`\`\`, ***, ---, etc.)
-- Do NOT use bullet points with asterisks or dashes
-- Write in plain, natural sentences and paragraphs
-- If listing items, use simple numbered lists (1. 2. 3.) or write them as flowing sentences
-- Keep responses clean and readable as plain text
-
 ${creatorIdentity}${toneModifier}`;
 
     if (isNonEnglish) {
@@ -227,25 +231,19 @@ ${creatorIdentity}${toneModifier}`;
 
 LANGUAGE INSTRUCTION: You MUST respond ENTIRELY in ${languageName}. Every word of your response should be in ${languageName}. Do not use English unless the user specifically asks for English.
 
-FORMATTING RULES:
-- Do NOT use markdown formatting (no **, ##, \`\`\`, ***, ---, etc.)
-- Do NOT use bullet points with asterisks or dashes
-- Write in plain, natural sentences and paragraphs
-- If listing items, use simple numbered lists (1. 2. 3.) or write them as flowing sentences
-
 ${creatorIdentity}
 When responding about your creator in ${languageName}, translate naturally but always preserve the name "Sanjay Dharmarajou" exactly as written (do not transliterate the name).
 
 Keep your responses clear, concise, and conversational - always in ${languageName}.${toneModifier}`;
     }
 
-    // Try Pollinations first, then Groq as fallback
-    console.log("Trying Pollinations.ai...");
-    let response = await tryPollinations(systemPrompt, messages, temperature);
+    // Try Groq first (faster), then Pollinations as fallback
+    console.log("Trying Groq...");
+    let response = await tryGroq(systemPrompt, messages, temperature);
 
     if (!response) {
-      console.log("Pollinations failed, trying Groq as fallback...");
-      response = await tryGroq(systemPrompt, messages, temperature);
+      console.log("Groq failed, trying Pollinations as fallback...");
+      response = await tryPollinations(systemPrompt, messages, temperature);
     }
 
     // If both providers failed, return fallback message
