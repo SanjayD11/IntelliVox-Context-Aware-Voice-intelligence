@@ -118,7 +118,7 @@ export function MessageList({ messages, loading, streamingContent, isSpeaking = 
             )}
           >
             {message.role === 'ai' ? (
-              <div className="text-sm leading-relaxed prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:text-foreground prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+              <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:font-semibold prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:text-foreground">
                 <ReactMarkdown>{message.content}</ReactMarkdown>
               </div>
             ) : (
@@ -177,7 +177,7 @@ export function MessageList({ messages, loading, streamingContent, isSpeaking = 
               <Bot className="h-5 w-5 text-primary" />
             </div>
             <div className="relative bg-card border border-border/50 rounded-2xl rounded-bl-lg px-4 py-3 max-w-[85%] md:max-w-[70%] shadow-md">
-              <div className="text-sm leading-relaxed prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:text-foreground prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+              <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:font-semibold prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:text-foreground">
                 <ReactMarkdown>{streamingContent}</ReactMarkdown>
               </div>
             </div>
