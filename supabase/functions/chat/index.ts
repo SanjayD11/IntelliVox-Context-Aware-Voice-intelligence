@@ -39,6 +39,124 @@ const LANGUAGE_NAMES: Record<string, string> = {
   'ur-PK': 'Urdu',
 };
 
+// Fallback messages for when all AI providers fail
+const FALLBACK_MESSAGES: Record<string, string> = {
+  'en': "I'm having a brief moment of thought. Could you please try again?",
+  'es': "Estoy teniendo un momento de reflexión. ¿Podrías intentarlo de nuevo?",
+  'fr': "J'ai un bref moment de réflexion. Pourriez-vous réessayer?",
+  'de': "Ich habe gerade einen kurzen Moment der Überlegung. Könnten Sie es bitte noch einmal versuchen?",
+  'hi': "मुझे सोचने में थोड़ा समय लग रहा है। क्या आप फिर से कोशिश कर सकते हैं?",
+  'ta': "நான் சிந்திக்கிறேன். மீண்டும் முயற்சிக்கவும்?",
+  'te': "నేను ఆలోచిస్తున్నాను. దయచేసి మళ్ళీ ప్రయత్నించగలరా?",
+  'ja': "少し考えています。もう一度お試しください。",
+  'ko': "잠시 생각 중입니다. 다시 시도해 주시겠어요?",
+  'zh': "我正在思考。请您再试一次？",
+  'pt': "Estou tendo um momento de reflexão. Poderia tentar novamente?",
+  'it': "Sto avendo un momento di riflessione. Potresti riprovare?",
+  'ar': "أنا أفكر للحظة. هل يمكنك المحاولة مرة أخرى؟",
+  'ru': "Я немного задумался. Не могли бы вы попробовать снова?",
+};
+
+// Helper to create fallback SSE response
+function createFallbackResponse(language: string | undefined) {
+  const langPrefix = language?.split('-')[0] || 'en';
+  const fallbackText = FALLBACK_MESSAGES[langPrefix] || FALLBACK_MESSAGES['en'];
+
+  const fallbackResponse = {
+    choices: [{
+      delta: { content: fallbackText },
+      finish_reason: "stop"
+    }]
+  };
+
+  return new Response(
+    `data: ${JSON.stringify(fallbackResponse)}\n\ndata: [DONE]\n\n`,
+    {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      }
+    }
+  );
+}
+
+// Try Pollinations.ai API
+async function tryPollinations(systemPrompt: string, messages: any[], temperature: number): Promise<Response | null> {
+  try {
+    const response = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        stream: true,
+        temperature: temperature,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Pollinations API error:", response.status);
+      return null;
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Pollinations fetch error:", error);
+    return null;
+  }
+}
+
+// Try Groq API as fallback
+async function tryGroq(systemPrompt: string, messages: any[], temperature: number): Promise<Response | null> {
+  // Check both uppercase and lowercase secret names for compatibility
+  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || Deno.env.get("groq_api_key");
+
+  if (!GROQ_API_KEY) {
+    console.error("GROQ_API_KEY not configured - checked both GROQ_API_KEY and groq_api_key");
+    return null;
+  }
+
+  console.log("Groq API key found, attempting request...");
+
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant", // Fast model available on free tier
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        stream: true,
+        temperature: temperature,
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Groq API error:", response.status, errorText);
+      return null;
+    }
+
+    return response;
+  } catch (error) {
+    console.error("Groq fetch error:", error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -108,69 +226,22 @@ When responding about your creator in ${languageName}, translate naturally but a
 Keep your responses clear, concise, and conversational - always in ${languageName}.${toneModifier}`;
     }
 
-    // Use Pollinations.ai
-    const response = await fetch("https://text.pollinations.ai/openai", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          ...messages,
-        ],
-        stream: true,
-        temperature: temperature,
-      }),
-    });
+    // Try Pollinations first, then Groq as fallback
+    console.log("Trying Pollinations.ai...");
+    let response = await tryPollinations(systemPrompt, messages, temperature);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API error:", response.status, errorText);
-
-      const fallbackMessages: Record<string, string> = {
-        'en': "I'm having a brief moment of thought. Could you please try again?",
-        'es': "Estoy teniendo un momento de reflexión. ¿Podrías intentarlo de nuevo?",
-        'fr': "J'ai un bref moment de réflexion. Pourriez-vous réessayer?",
-        'de': "Ich habe gerade einen kurzen Moment der Überlegung. Könnten Sie es bitte noch einmal versuchen?",
-        'hi': "मुझे सोचने में थोड़ा समय लग रहा है। क्या आप फिर से कोशिश कर सकते हैं?",
-        'ta': "நான் சிந்திக்கிறேன். மீண்டும் முயற்சிக்கவும்?",
-        'te': "నేను ఆలోచిస్తున్నాను. దయచేసి మళ్ళీ ప్రయత్నించగలరా?",
-        'ja': "少し考えています。もう一度お試しください。",
-        'ko': "잠시 생각 중입니다. 다시 시도해 주시겠어요?",
-        'zh': "我正在思考。请您再试一次？",
-        'pt': "Estou tendo um momento de reflexão. Poderia tentar novamente?",
-        'it': "Sto avendo un momento di riflessione. Potresti riprovare?",
-        'ar': "أنا أفكر للحظة. هل يمكنك المحاولة مرة أخرى؟",
-        'ru': "Я немного задумался. Не могли бы вы попробовать снова?",
-      };
-
-      const langPrefix = language?.split('-')[0] || 'en';
-      const fallbackText = fallbackMessages[langPrefix] || fallbackMessages['en'];
-
-      const fallbackResponse = {
-        choices: [{
-          delta: { content: fallbackText },
-          finish_reason: "stop"
-        }]
-      };
-
-      return new Response(
-        `data: ${JSON.stringify(fallbackResponse)}\n\ndata: [DONE]\n\n`,
-        {
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-          }
-        }
-      );
+    if (!response) {
+      console.log("Pollinations failed, trying Groq as fallback...");
+      response = await tryGroq(systemPrompt, messages, temperature);
     }
 
+    // If both providers failed, return fallback message
+    if (!response) {
+      console.error("All AI providers failed");
+      return createFallbackResponse(language);
+    }
+
+    // Stream the successful response
     return new Response(response.body, {
       headers: {
         ...corsHeaders,
@@ -181,22 +252,6 @@ Keep your responses clear, concise, and conversational - always in ${languageNam
     });
   } catch (error) {
     console.error("Chat function error:", error);
-
-    const fallbackResponse = {
-      choices: [{
-        delta: { content: "Let me think about that differently. Please ask again!" },
-        finish_reason: "stop"
-      }]
-    };
-
-    return new Response(
-      `data: ${JSON.stringify(fallbackResponse)}\n\ndata: [DONE]\n\n`,
-      {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "text/event-stream"
-        }
-      }
-    );
+    return createFallbackResponse(undefined);
   }
 });
