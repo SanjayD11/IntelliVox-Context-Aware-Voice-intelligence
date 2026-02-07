@@ -4,6 +4,7 @@ import { User, Bot, Sparkles, Volume2 } from 'lucide-react';
 import { CopyButton } from '@/components/chat/CopyButton';
 import { RetryButton } from '@/components/chat/RetryButton';
 import type { Message } from '@/hooks/useChats';
+import ReactMarkdown from 'react-markdown';
 
 interface MessageListProps {
   messages: Message[];
@@ -116,7 +117,13 @@ export function MessageList({ messages, loading, streamingContent, isSpeaking = 
                 : 'bg-card border border-border/50 text-foreground rounded-bl-lg'
             )}
           >
-            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
+            {message.role === 'ai' ? (
+              <div className="text-sm leading-relaxed prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:text-foreground prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
+            )}
 
             {/* Copy button for all messages */}
             <CopyButton
@@ -159,37 +166,44 @@ export function MessageList({ messages, loading, streamingContent, isSpeaking = 
             </div>
           )}
         </div>
-      ))}
+      ))
+      }
 
       {/* Streaming response */}
-      {streamingContent && (
-        <div className="flex gap-3 justify-start animate-fade-in group">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center shrink-0 shadow-lg">
-            <Bot className="h-5 w-5 text-primary" />
-          </div>
-          <div className="relative bg-card border border-border/50 rounded-2xl rounded-bl-lg px-4 py-3 max-w-[85%] md:max-w-[70%] shadow-md">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{streamingContent}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Typing indicator */}
-      {loading && !streamingContent && (
-        <div className="flex gap-3 justify-start animate-fade-in">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center shrink-0 shadow-lg">
-            <Bot className="h-5 w-5 text-primary animate-pulse" />
-          </div>
-          <div className="bg-card border border-border/50 rounded-2xl rounded-bl-lg px-4 py-3 shadow-md">
-            <div className="flex gap-1.5 items-center">
-              <div className="h-2.5 w-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="h-2.5 w-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="h-2.5 w-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+      {
+        streamingContent && (
+          <div className="flex gap-3 justify-start animate-fade-in group">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center shrink-0 shadow-lg">
+              <Bot className="h-5 w-5 text-primary" />
+            </div>
+            <div className="relative bg-card border border-border/50 rounded-2xl rounded-bl-lg px-4 py-3 max-w-[85%] md:max-w-[70%] shadow-md">
+              <div className="text-sm leading-relaxed prose prose-sm prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:text-foreground prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded">
+                <ReactMarkdown>{streamingContent}</ReactMarkdown>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* Typing indicator */}
+      {
+        loading && !streamingContent && (
+          <div className="flex gap-3 justify-start animate-fade-in">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/30 to-accent/20 flex items-center justify-center shrink-0 shadow-lg">
+              <Bot className="h-5 w-5 text-primary animate-pulse" />
+            </div>
+            <div className="bg-card border border-border/50 rounded-2xl rounded-bl-lg px-4 py-3 shadow-md">
+              <div className="flex gap-1.5 items-center">
+                <div className="h-2.5 w-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="h-2.5 w-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="h-2.5 w-2.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       <div ref={bottomRef} className="h-1" />
-    </div>
+    </div >
   );
 }
